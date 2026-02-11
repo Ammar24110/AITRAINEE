@@ -1,0 +1,9 @@
+LLM stands for Large Language Model.
+
+Examples:
+- LLaMA
+- Gemma
+- GPT
+
+LLMs generate text based on prompts.
+They can be combined with RAG for better accuracy.

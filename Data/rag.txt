@@ -1,0 +1,13 @@
+RAG stands for Retrieval-Augmented Generation.
+
+it combines a retriever and a Generator
+
+Retriever:
+Searches a vector database for relevant chunks.
+
+Generator:
+Uses retrieved context to produce grounded answers.
+
+Benefits:
+- Reduces hallucinations
+- Uses external knowledge

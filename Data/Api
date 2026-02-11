@@ -1,0 +1,9 @@
+API stands for Application Programming Interface.
+
+GET request:
+Used to retrieve data.
+
+POST request:
+Used to send data.
+
+FastAPI is a Python framework for building APIs.
