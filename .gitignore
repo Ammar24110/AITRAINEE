@@ -1,1 +1,9 @@
+# Ignore vector database / indexes
+storage/
 
+# Python cache
+__pycache__/
+*.pyc
+
+# Environment files
+.env
