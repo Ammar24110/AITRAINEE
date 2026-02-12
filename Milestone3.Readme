@@ -1,0 +1,5 @@
+The /index Endpoint is called using a POST request with a JSON body specifying whether the index should be rebuilt, and it returns a confirmation message once document embeddings are generated and stored.
+
+The /search Endpoint accepts a query string and a top_k value, performs semantic search on the FAISS vector store, and returns the most relevant document chunks.
+
+A simple GET health Endpoint is also provided to verify that the API is running succesfully.
