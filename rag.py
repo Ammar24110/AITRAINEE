@@ -1,6 +1,7 @@
 import os
 import faiss
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
+from llama_index.core.node_parser import SentenceSplitter
 
 from llama_index.core import (
     VectorStoreIndex,
@@ -30,20 +31,28 @@ def build_index() -> VectorStoreIndex:
     setup_models()
     documents = SimpleDirectoryReader(DATA_DIR).load_data()
 
+    splitter = SentenceSplitter(chunk_size=200, chunk_overlap=30)
+    nodes = splitter.get_nodes_from_documents(documents)
+
     dimension = 768
-    faiss_index = faiss.IndexFlatL2(dimension)
+    faiss_index = faiss.IndexFlatIP(dimension)
     vector_store = FaissVectorStore(faiss_index=faiss_index)
 
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
-    index = VectorStoreIndex.from_documents(documents, storage_context=storage_context)
+
+    # ✅ Build index from nodes instead of full documents
+    index = VectorStoreIndex(nodes, storage_context=storage_context)
+
     index.storage_context.persist(persist_dir=PERSIST_DIR)
     return index
-
 
 def load_index() -> VectorStoreIndex:
     setup_models()
     vector_store = FaissVectorStore.from_persist_dir(PERSIST_DIR)
-    storage_context = StorageContext.from_defaults(persist_dir=PERSIST_DIR, vector_store=vector_store)
+    storage_context = StorageContext.from_defaults(
+        persist_dir=PERSIST_DIR,
+        vector_store=vector_store
+    )
     return load_index_from_storage(storage_context)
 
 
@@ -65,16 +74,58 @@ def get_index(force_rebuild: bool = False) -> VectorStoreIndex:
     return _index
 
 
-def retrieve(query: str, top_k: int = 3) -> List[Dict]:
-    index = get_index()
-    retriever = index.as_retriever(similarity_top_k=top_k)
+def retrieve(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+    idx = get_index(force_rebuild=False)
+    retriever = idx.as_retriever(similarity_top_k=top_k)
     nodes = retriever.retrieve(query)
 
-    results = []
-    for n in nodes:
+    results: List[Dict[str, Any]] = []
+    for item in nodes:
+        node = item.node
+        score = getattr(item, "score", None)  # now similarity (higher is better)
+
+        text = node.get_content() if hasattr(node, "get_content") else str(node)
+        metadata = getattr(node, "metadata", {}) or {}
+
         results.append({
-            "score": float(n.score) if n.score is not None else None,
-            "text": n.node.get_content(),
-            "metadata": dict(n.node.metadata) if n.node.metadata else {},
+            "text": text,
+            "similarity": float(score) if score is not None else None,
+            "metadata": metadata
         })
+
+    # Sort explicitly: highest similarity first
+    results.sort(key=lambda r: float("-inf") if r["similarity"] is None else r["similarity"], reverse=True)
     return results
+
+def ask(query: str, top_k: int = 3) -> Dict[str, Any]:
+    sources = retrieve(query, top_k=top_k)
+
+    context = "\n\n".join(
+        [f"[Source {i+1} | {s['metadata'].get('file_name','unknown')}]\n{s['text']}"
+         for i, s in enumerate(sources)]
+    )
+
+    prompt = f"""You are a helpful assistant.
+Use the context below to answer the question.
+
+Rules:
+- If the context contains the answer, answer in 1-2 sentences.
+- If the context does NOT contain the answer, say exactly: I don't know based on the provided documents.
+- Do NOT refuse if the context clearly mentions the answer.
+
+Context:
+{context}
+
+Question: {query}
+
+Answer (1-2 sentences):"""
+
+    setup_models()
+    response = Settings.llm.complete(prompt)
+
+    return {
+        "query": query,
+        "top_k": top_k,
+        "answer": str(response),
+        "sources": sources
+    }

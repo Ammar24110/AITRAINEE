@@ -11,3 +11,9 @@ Uses retrieved context to produce grounded answers.
 Benefits:
 - Reduces hallucinations
 - Uses external knowledge
+
+RAG is useful when the LLM does not have access to your private or updated documents.
+Instead of relying on memorization, it retrieves the most relevant information from a vector database.
+This improves factual accuracy and reduces hallucinations because the model answers using real retrieved context.
+Typical use cases include company policies, internal documentation, FAQs, and product manuals.
+RAG also improves transparency because you can return the source chunks used in the answer.

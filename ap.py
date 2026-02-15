@@ -13,6 +13,9 @@ class SearchRequest(BaseModel):
     query: str
     top_k: int = 3
 
+class AskRequest(BaseModel):
+    query: str
+    top_k: int = 3
 
 @app.get("/")
 def health():
@@ -36,5 +39,17 @@ def search_docs(body: SearchRequest):
     try:
         results = rag.retrieve(body.query, top_k=body.top_k)
         return {"query": body.query, "top_k": body.top_k, "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+@app.post("/ask")
+def ask_llm(body: AskRequest):
+    if not body.query.strip():
+        raise HTTPException(status_code=400, detail="Query cannot be empty")
+
+    try:
+        result = rag.ask(body.query, top_k=body.top_k)
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
