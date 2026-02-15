@@ -1,0 +1,28 @@
+Example for /search: 
+curl -X POST "http://127.0.0.1:8000/search" \
+-H "Content-Type: application/json" \
+-d '{
+  "query": "What are the benefits of RAG?",
+  "top_k": 3
+}'
+Expected response:
+{
+  "query": "What are the benefits of RAG?",
+  "top_k": 3,
+  "results": [...]
+}
+
+Example for ask:
+curl -X POST "http://127.0.0.1:8000/ask" \
+-H "Content-Type: application/json" \
+-d '{
+  "query": "What are the benefits of RAG?",
+  "top_k": 3
+}'
+Expected response:
+{
+  "query": "What are the benefits of RAG?",
+  "top_k": 3,
+  "answer": "RAG reduces hallucinations...",
+  "sources": [...]
+}
