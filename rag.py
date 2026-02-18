@@ -18,6 +18,7 @@ LLM_MODEL = "gemma3:4b"
 EMBED_MODEL = "nomic-embed-text"
 PERSIST_DIR = "storage"
 DATA_DIR = "Data"
+PROMPT_MODE = "fewshot"  # options: "basic", "strict", "fewshot"
 
 _index: Optional[VectorStoreIndex] = None
 
@@ -40,7 +41,7 @@ def build_index() -> VectorStoreIndex:
 
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
-    # ✅ Build index from nodes instead of full documents
+    #  Build index from nodes instead of full documents
     index = VectorStoreIndex(nodes, storage_context=storage_context)
 
     index.storage_context.persist(persist_dir=PERSIST_DIR)
@@ -97,7 +98,9 @@ def retrieve(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
     results.sort(key=lambda r: float("-inf") if r["similarity"] is None else r["similarity"], reverse=True)
     return results
 
-def ask(query: str, top_k: int = 3) -> Dict[str, Any]:
+
+
+def ask(query: str,history_text: str, top_k: int = 3) -> Dict[str, Any]:
     sources = retrieve(query, top_k=top_k)
 
     context = "\n\n".join(
@@ -105,21 +108,58 @@ def ask(query: str, top_k: int = 3) -> Dict[str, Any]:
          for i, s in enumerate(sources)]
     )
 
-    prompt = f"""You are a helpful assistant.
-Use the context below to answer the question.
+    prompt = f"""
+You are a conversational assistant.
 
-Rules:
-- If the context contains the answer, answer in 1-2 sentences.
-- If the context does NOT contain the answer, say exactly: I don't know based on the provided documents.
-- Do NOT refuse if the context clearly mentions the answer.
+You have TWO sources:
+1) CHAT HISTORY (user personal info like name, preferences, previous messages).
+2) DOCUMENT CONTEXT (retrieved chunks from files).
 
-Context:
+RULES:
+- If the answer is in CHAT HISTORY, answer using CHAT HISTORY.
+- Else if the answer is in DOCUMENT CONTEXT, answer using DOCUMENT CONTEXT.
+- Else say exactly: I don't know based on the provided history and documents.
+- Keep the answer to 1-2 sentences.
+
+EXAMPLES:
+
+Example 1:
+CHAT HISTORY: User: My name is Ammar.
+DOCUMENT CONTEXT: (empty)
+QUESTION: What is my name?
+ANSWER: Your name is Ammar.
+
+Example 2:
+CHAT HISTORY: User: I like football.
+DOCUMENT CONTEXT: (empty)
+QUESTION: What do I like?
+ANSWER: You like football.
+
+Example 3:
+CHAT HISTORY: (empty)
+DOCUMENT CONTEXT: FastAPI is a Python framework for building APIs.
+QUESTION: What is FastAPI?
+ANSWER: FastAPI is a Python framework for building APIs.
+
+Example 4:
+CHAT HISTORY: (empty)
+DOCUMENT CONTEXT: API stands for Application Programming Interface.
+QUESTION: What does SQL stand for?
+ANSWER: I don't know based on the provided history and documents.
+
+NOW YOUR TURN:
+
+CHAT HISTORY:
+{history_text}
+
+DOCUMENT CONTEXT:
 {context}
 
-Question: {query}
+QUESTION:
+{query}
 
-Answer (1-2 sentences):"""
-
+ANSWER:
+"""
     setup_models()
     response = Settings.llm.complete(prompt)
 
@@ -127,5 +167,78 @@ Answer (1-2 sentences):"""
         "query": query,
         "top_k": top_k,
         "answer": str(response),
+        "sources": sources
+    }
+
+def chat(query: str, history_text: str, top_k: int = 3) -> Dict[str, Any]:
+    sources = retrieve(query, top_k=top_k)
+
+    context = "\n\n".join(
+        [f"[Source {i+1} | {s['metadata'].get('file_name','unknown')}]\n{s['text']}"
+         for i, s in enumerate(sources)]
+    )
+
+    prompt = f"""
+You are a conversational assistant.
+
+You have TWO sources:
+1) CHAT HISTORY (facts the user said before).
+2) DOCUMENT CONTEXT (retrieved chunks from files).
+
+RULES:
+- Prefer CHAT HISTORY for personal facts/preferences.
+- If the answer is in CHAT HISTORY, REWRITE it as a clean answer.
+  - Do NOT quote the user's sentence verbatim.
+  - Convert "I ..." to "You ..." when appropriate.
+- Else if the answer is in DOCUMENT CONTEXT, answer using DOCUMENT CONTEXT.
+- Else say exactly: I don't know based on the provided history and documents.
+- Keep the answer to 1-2 sentences.
+
+EXAMPLES:
+
+Example 1:
+CHAT HISTORY:
+User: My name is Ammar.
+QUESTION: What is my name?
+ANSWER: Your name is Ammar.
+
+Example 2:
+CHAT HISTORY:
+User: I like football.
+QUESTION: What do I like?
+ANSWER: You like football.
+
+Example 3:
+CHAT HISTORY:
+User: I live in Qatar.
+QUESTION: Where do I live?
+ANSWER: You live in Qatar.
+
+Example 4:
+CHAT HISTORY: (empty)
+DOCUMENT CONTEXT: FastAPI is a Python framework for building APIs.
+QUESTION: What is FastAPI?
+ANSWER: FastAPI is a Python framework for building APIs.
+
+NOW YOUR TURN:
+
+CHAT HISTORY:
+{history_text}
+
+DOCUMENT CONTEXT:
+{context}
+
+QUESTION:
+{query}
+
+ANSWER:
+"""
+    setup_models()
+    response = Settings.llm.complete(prompt)
+
+    return {
+        "query": query,
+        "top_k": top_k,
+        "answer": str(response).strip(),
         "sources": sources
     }

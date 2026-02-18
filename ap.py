@@ -21,6 +21,13 @@ class AskRequest(BaseModel):
     top_k: int = 3
     session_id: int | None = None
 
+class ChatRequest(BaseModel):
+    message: str
+    top_k: int = 3
+    session_id: int | None = None
+    history_k: int = 6  # last 6 messages
+
+
 @app.get("/")
 def health():
     return {"status": "ok", "message": "RAG API running"}
@@ -103,3 +110,128 @@ def ask_llm(body: AskRequest, db: Session = Depends(get_db)):
         "session_id": chat_session.id,
         **result
     }
+def format_history(msgs):
+    lines = []
+    for m in msgs:
+        if m.role == "user":          # ✅ only user messages
+            lines.append(f"USER: {m.content}")
+    return "\n".join(lines)
+
+def is_question(text: str) -> bool:
+    t = text.strip().lower()
+    if t.endswith("?"):
+        return True
+    starters = ("what", "why", "how", "when", "where", "who", "which", "do ", "does ", "did ", "can ", "could ", "is ", "are ", "am ", "will ", "would ")
+    return t.startswith(starters)
+
+def is_statement(text: str) -> bool:
+    t = text.strip().lower()
+    if t.endswith("?"):
+        return False
+    starters = (
+        "my name is", "i am", "i'm", "i like", "i love", "i live", "i work",
+        "my favorite", "my favourite", "i prefer"
+    )
+    return t.startswith(starters)
+@app.post("/chat")
+def chat_endpoint(body: ChatRequest, db: Session = Depends(get_db)):
+    if not body.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+    # 1) Create or load session
+    if body.session_id is None:
+        chat_session = ChatSessionModel(title=body.message[:50])
+        db.add(chat_session)
+        db.commit()
+        db.refresh(chat_session)
+    else:
+        chat_session = db.query(ChatSessionModel).filter(ChatSessionModel.id == body.session_id).first()
+        if not chat_session:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+    # 2) Fetch history BEFORE saving the new user message
+    history_msgs = (
+        db.query(Message)
+        .filter(Message.session_id == chat_session.id)
+        .order_by(Message.created_at.desc())
+        .limit(body.history_k)
+        .all()
+    )
+    history_msgs = list(reversed(history_msgs))  # oldest -> newest
+    history_text = format_history(history_msgs)
+
+    # 3) Save user message
+    user_msg = Message(session_id=chat_session.id, role="user", content=body.message)
+    db.add(user_msg)
+    db.commit()
+    db.refresh(user_msg)
+    # If it's NOT a question, just acknowledge and skip RAG
+    # If it's NOT a question, just acknowledge and skip RAG
+    if not is_question(body.message):
+        assistant_text = "Got it. I’ll remember that."
+        assistant_msg = Message(session_id=chat_session.id, role="assistant", content=assistant_text)
+        db.add(assistant_msg)
+        db.commit()
+        db.refresh(assistant_msg)
+
+        return {
+           "session_id": chat_session.id,
+           "answer": assistant_text,
+           "sources": []
+    }
+    # 4) Add the NEW user message to history_text (so model sees it in history too)
+    if history_text.strip():
+        history_text = history_text + f"\nUSER: {body.message}"
+    else:
+        history_text = f"USER: {body.message}"
+
+    # 5) Run RAG + history
+    result = rag.chat(body.message, history_text=history_text, top_k=body.top_k)
+
+    # 6) Save assistant message
+    assistant_msg = Message(session_id=chat_session.id, role="assistant", content=result["answer"])
+    db.add(assistant_msg)
+    db.commit()
+    db.refresh(assistant_msg)
+
+    # 7) Save retrieved context (linked to assistant message)
+    for i, src in enumerate(result["sources"], start=1):
+        ctx = RetrievedContext(
+            message_id=assistant_msg.id,
+            source_index=i,
+            text=src.get("text"),
+            similarity=src.get("similarity"),
+            source_metadata=src.get("metadata"),
+        )
+        db.add(ctx)
+
+    db.commit()
+
+    return {
+        "session_id": chat_session.id,
+        "answer": result["answer"],
+        "sources": result["sources"],
+    }
+
+@app.get("/history/{session_id}")
+def get_history(session_id: int, db: Session = Depends(get_db)):
+    chat_session = db.query(ChatSessionModel).filter(ChatSessionModel.id == session_id).first()
+    if not chat_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    msgs = (
+        db.query(Message)
+        .filter(Message.session_id == session_id)
+        .order_by(Message.created_at.asc())
+        .all()
+    )
+
+    return {
+        "session_id": session_id,
+        "title": chat_session.title,
+        "messages": [
+            {"id": m.id, "role": m.role, "content": m.content, "created_at": m.created_at}
+            for m in msgs
+        ]
+    }
+
