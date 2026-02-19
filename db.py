@@ -5,7 +5,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from datetime import datetime
 
 DATABASE_URL = "sqlite:///./chat.db"
-
+print("LOADED DB.PY FROM:", __file__)
 engine = create_engine(
     DATABASE_URL,
     connect_args={"check_same_thread": False}  # needed for SQLite + FastAPI
@@ -20,6 +20,8 @@ class ChatSessionModel(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, default="New Chat")
+    summary = Column(Text, default="")
+    summary_last_message_id = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     messages = relationship("Message", back_populates="session", cascade="all, delete")

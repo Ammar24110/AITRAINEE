@@ -242,3 +242,63 @@ ANSWER:
         "answer": str(response).strip(),
         "sources": sources
     }
+
+def summarize_text(old_summary: str, msgs: list[str]) -> str:
+    setup_models()
+
+    chunk_text = "\n".join(msgs).strip()
+
+    prompt = f"""
+You are summarizing chat history for memory.
+
+RULES:
+- Update the EXISTING SUMMARY using the NEW MESSAGES.
+- Keep it short (max 6 bullet points).
+- Only keep stable user facts/preferences and important decisions.
+- Do NOT invent anything.
+
+EXISTING SUMMARY:
+{old_summary}
+
+NEW MESSAGES:
+{chunk_text}
+
+UPDATED SUMMARY:
+"""
+
+    resp = Settings.llm.complete(prompt)
+    return str(resp).strip()
+
+def summarize_history(old_summary: str, new_chunk: str) -> str:
+    """
+    Returns an updated running summary that includes new_chunk.
+    Uses your local LLM (same one you use in rag.chat).
+    """
+    old_summary = (old_summary or "").strip()
+    new_chunk = (new_chunk or "").strip()
+
+    if not new_chunk:
+        return old_summary
+
+    prompt = f"""
+You are maintaining a SHORT memory summary for a chat session.
+
+Current summary (may be empty):
+{old_summary if old_summary else "(empty)"}
+
+New conversation chunk to incorporate:
+{new_chunk}
+
+Update the summary with the new information.
+Rules:
+- Keep it concise (5-10 bullet points max).
+- Keep stable facts (name, preferences, dislikes, goals).
+- Remove repetition.
+- If something is corrected later, keep the latest version.
+
+Return ONLY the updated summary text.
+""".strip()
+
+    setup_models()
+    resp = Settings.llm.complete(prompt)
+    return str(resp).strip()

@@ -4,7 +4,9 @@ import rag
 from fastapi import FastAPI, HTTPException, Depends
 from sqlalchemy.orm import Session
 from db import init_db, get_db, ChatSessionModel, Message, RetrievedContext
-
+SUMMARY_TRIGGER = 5   # start summarizing after this many messages in session
+SUMMARY_CHUNK = 10     # summarize this many old messages at a time
+RECENT_KEEP = 6        # keep last 6 messages as "recent"
 app = FastAPI(title="Milestone 3 - Data Preparation and Indexing")
 
 init_db()
@@ -150,16 +152,23 @@ def chat_endpoint(body: ChatRequest, db: Session = Depends(get_db)):
             raise HTTPException(status_code=404, detail="Session not found")
 
     # 2) Fetch history BEFORE saving the new user message
-    history_msgs = (
-        db.query(Message)
-        .filter(Message.session_id == chat_session.id)
-        .order_by(Message.created_at.desc())
-        .limit(body.history_k)
-        .all()
-    )
-    history_msgs = list(reversed(history_msgs))  # oldest -> newest
-    history_text = format_history(history_msgs)
+    # 2) Fetch recent history (for context)
+    recent_msgs = (
+    db.query(Message)
+    .filter(Message.session_id == chat_session.id)
+    .order_by(Message.created_at.desc())
+    .limit(body.history_k)
+    .all()
+)
+    recent_msgs = list(reversed(recent_msgs))
+    recent_text = format_history(recent_msgs)
 
+    if (chat_session.summary or "").strip():
+       history_text = f"SUMMARY:\n{chat_session.summary}\n\nRECENT:\n{recent_text}"
+    else:
+      history_text = recent_text
+
+    result = rag.chat(body.message, history_text=history_text, top_k=body.top_k)
     # 3) Save user message
     user_msg = Message(session_id=chat_session.id, role="user", content=body.message)
     db.add(user_msg)
@@ -193,7 +202,38 @@ def chat_endpoint(body: ChatRequest, db: Session = Depends(get_db)):
     db.add(assistant_msg)
     db.commit()
     db.refresh(assistant_msg)
+        # --- 3A) Summarize old history if session is long ---
+    total_msgs = db.query(Message).filter(Message.session_id == chat_session.id).count()
 
+    if total_msgs > SUMMARY_TRIGGER:
+        # last RECENT_KEEP messages (we never summarize these)
+        recent = (
+            db.query(Message)
+            .filter(Message.session_id == chat_session.id)
+            .order_by(Message.created_at.desc())
+            .limit(RECENT_KEEP)
+            .all()
+        )
+        recent_ids = {m.id for m in recent}
+
+        # candidates for summarization: not summarized yet + not in recent
+        candidates = (
+            db.query(Message)
+            .filter(
+                Message.session_id == chat_session.id,
+                Message.id > chat_session.summary_last_message_id
+            )
+            .order_by(Message.created_at.asc())
+            .all()
+        )
+        candidates = [m for m in candidates if m.id not in recent_ids]
+
+        chunk = candidates[:SUMMARY_CHUNK]
+        if chunk:
+            chunk_text = format_history(chunk)
+            chat_session.summary = rag.summarize_history(chat_session.summary or "", chunk_text)
+            chat_session.summary_last_message_id = chunk[-1].id
+            db.commit()
     # 7) Save retrieved context (linked to assistant message)
     for i, src in enumerate(result["sources"], start=1):
         ctx = RetrievedContext(
@@ -229,6 +269,7 @@ def get_history(session_id: int, db: Session = Depends(get_db)):
     return {
         "session_id": session_id,
         "title": chat_session.title,
+        "summary": getattr(chat_session, "summary", ""), 
         "messages": [
             {"id": m.id, "role": m.role, "content": m.content, "created_at": m.created_at}
             for m in msgs
