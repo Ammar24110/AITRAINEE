@@ -1,0 +1,36 @@
+How prompts were engineered and improved:
+You are a helpful AI assistant.
+
+Use ONLY the retrieved context to answer the question.
+If the answer is not found in the context, say:
+"I don't have enough information in the provided documents."
+
+Conversation Summary:
+{summary}
+
+Recent Conversation:
+{recent_messages}
+
+Retrieved Context:
+{retrieved_chunks}
+
+User Question:
+{user_message}
+
+Provide a clear and concise answer.
+-this helped reduce hallucinations and  generate more accurate answers.
+
+Example of how history works:-
+prompt:
+My name is Ammar.
+I like football.
+What do I like?
+
+Response:
+You like football.
+
+prompt:
+What does RAG combine?
+
+Response:
+RAG combines a retriever and a generator.
