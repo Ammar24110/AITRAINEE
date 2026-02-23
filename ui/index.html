@@ -1,0 +1,145 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>RAG Chat UI</title>
+  <style>
+    body { margin:0; font-family: Arial, sans-serif; height:100vh; display:flex; }
+    .col { padding:12px; overflow:auto; border-right:1px solid #ddd; }
+    #sessions { width:22%; }
+    #chat { width:48%; }
+    #sources { width:30%; border-right:none; }
+    .session { padding:8px; cursor:pointer; border-radius:8px; margin-bottom:6px; }
+    .session:hover { background:#f2f2f2; }
+    .active { background:#e8f0ff; }
+    .msg { padding:10px; border-radius:10px; margin:8px 0; max-width:90%; white-space:pre-wrap; }
+    .user { background:#dff7df; margin-left:auto; }
+    .bot { background:#f3f3f3; }
+    .row { display:flex; gap:8px; margin-top:10px; }
+    input, button { padding:10px; font-size:14px; }
+    input { flex:1; }
+    .src { border:1px solid #ddd; border-radius:10px; padding:10px; margin-bottom:10px; }
+    .src small { color:#666; }
+    pre { white-space:pre-wrap; margin:8px 0 0 0; }
+  </style>
+</head>
+<body>
+  <div class="col" id="sessions">
+    <h3>Sessions</h3>
+    <button onclick="newSession()">+ New Session</button>
+    <div id="sessionsList"></div>
+  </div>
+
+  <div class="col" id="chat">
+    <h3>Chat</h3>
+    <div id="chatBox"></div>
+    <div class="row">
+      <input id="msgInput" placeholder="Type your message..." />
+      <button onclick="sendMsg()">Send</button>
+    </div>
+    <div style="margin-top:8px;">
+      <label>top_k:</label>
+      <input id="topK" type="number" value="3" style="width:60px;">
+    </div>
+  </div>
+
+  <div class="col" id="sources">
+    <h3>Retrieved Docs</h3>
+    <div id="sourcesBox"></div>
+  </div>
+
+<script>
+let currentSessionId = null;
+
+async function loadSessions() {
+  const res = await fetch('/sessions');
+  const sessions = await res.json();
+  const list = document.getElementById('sessionsList');
+  list.innerHTML = '';
+
+  sessions.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'session' + (s.id === currentSessionId ? ' active' : '');
+    div.textContent = `#${s.id} - ${s.title}`;
+    div.onclick = () => selectSession(s.id);
+    list.appendChild(div);
+  });
+}
+
+async function selectSession(id) {
+  currentSessionId = id;
+  await loadSessions();
+  await loadHistory();
+  clearSources();
+}
+
+async function loadHistory() {
+  const res = await fetch(`/history/${currentSessionId}`);
+  const data = await res.json();
+  const box = document.getElementById('chatBox');
+  box.innerHTML = '';
+
+  data.messages.forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'msg ' + (m.role === 'user' ? 'user' : 'bot');
+    div.textContent = m.content;
+    box.appendChild(div);
+  });
+
+  box.scrollTop = box.scrollHeight;
+}
+
+function clearSources() {
+  document.getElementById('sourcesBox').innerHTML = '';
+}
+
+function renderSources(sources) {
+  const box = document.getElementById('sourcesBox');
+  box.innerHTML = '';
+  sources.forEach((s, idx) => {
+    const div = document.createElement('div');
+    div.className = 'src';
+    const fname = (s.metadata && s.metadata.file_name) ? s.metadata.file_name : 'unknown';
+    div.innerHTML = `<b>Source ${idx+1}</b><br><small>${fname}</small><br><small>score: ${s.similarity}</small><pre>${s.text}</pre>`;
+    box.appendChild(div);
+  });
+}
+
+async function newSession() {
+  currentSessionId = null;
+  document.getElementById('chatBox').innerHTML = '';
+  clearSources();
+  await loadSessions();
+}
+
+async function sendMsg() {
+  const input = document.getElementById('msgInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  const topK = parseInt(document.getElementById('topK').value || '3');
+  input.value = '';
+
+  const payload = { message: msg, top_k: topK, session_id: currentSessionId };
+
+  const res = await fetch('/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+
+  // If this was a new session, backend returns session_id
+  currentSessionId = data.session_id;
+
+  await loadSessions();
+  await loadHistory();
+  renderSources(data.sources || []);
+}
+
+// Auto-load at start
+loadSessions();
+</script>
+</body>
+</html>

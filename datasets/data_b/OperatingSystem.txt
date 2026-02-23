@@ -1,0 +1,32 @@
+An Operating System (OS) is system software that manages computer hardware and software resources.
+
+The OS acts as an interface between users and hardware.
+
+Main responsibilities of an Operating System:
+
+Process Management:
+Handles running programs and multitasking.
+
+Memory Management:
+Allocates and manages RAM.
+
+File System Management:
+Stores and organizes files.
+
+Device Management:
+Controls hardware devices like printers and keyboards.
+
+Common Operating Systems:
+- Windows
+- Linux
+- macOS
+
+Kernel:
+The core part of an operating system.
+
+User Mode vs Kernel Mode:
+User Mode runs applications.
+Kernel Mode runs system-level operations.
+
+Multitasking:
+Allows multiple programs to run at the same time.

@@ -2,7 +2,7 @@ import os
 import faiss
 from typing import Optional, List, Dict, Any
 from llama_index.core.node_parser import SentenceSplitter
-
+import time
 from llama_index.core import (
     VectorStoreIndex,
     SimpleDirectoryReader,
@@ -13,30 +13,38 @@ from llama_index.core import (
 from llama_index.llms.ollama import Ollama
 from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.vector_stores.faiss import FaissVectorStore
-
+_RETRIEVE_CACHE: dict[tuple[str, int], List[Dict[str, Any]]] = {}
 LLM_MODEL = "gemma3:4b"
 EMBED_MODEL = "nomic-embed-text"
-PERSIST_DIR = "storage"
-DATA_DIR = "Data"
+PERSIST_DIR = os.getenv("PERSIST_DIR", "storage")
+DATA_DIR = os.getenv("DATA_DIR", "datasets/Data/data_a")
 PROMPT_MODE = "fewshot"  # options: "basic", "strict", "fewshot"
 
 _index: Optional[VectorStoreIndex] = None
-
+_EMBED_DIM: int | None = None
 
 def setup_models():
     Settings.llm = Ollama(model=LLM_MODEL, temperature=0)
     Settings.embed_model = OllamaEmbedding(model_name=EMBED_MODEL)
 
+def get_embed_dim() -> int:
+    global _EMBED_DIM
+    if _EMBED_DIM is not None:
+        return _EMBED_DIM
+    setup_models()
+    vec = Settings.embed_model.get_text_embedding("dimension test")
+    _EMBED_DIM = len(vec)
+    return _EMBED_DIM
 
 def build_index() -> VectorStoreIndex:
     setup_models()
     documents = SimpleDirectoryReader(DATA_DIR).load_data()
 
-    splitter = SentenceSplitter(chunk_size=200, chunk_overlap=30)
+    splitter = SentenceSplitter(chunk_size=350, chunk_overlap=70)
     nodes = splitter.get_nodes_from_documents(documents)
 
-    dimension = 768
-    faiss_index = faiss.IndexFlatIP(dimension)
+    dimension = get_embed_dim()
+    faiss_index = faiss.IndexFlatL2(dimension)
     vector_store = FaissVectorStore(faiss_index=faiss_index)
 
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
@@ -76,14 +84,24 @@ def get_index(force_rebuild: bool = False) -> VectorStoreIndex:
 
 
 def retrieve(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+    key = (query.strip().lower(), top_k)
+    if key in _RETRIEVE_CACHE:
+       return _RETRIEVE_CACHE[key]
+    t0 = time.perf_counter()
+
     idx = get_index(force_rebuild=False)
+    t1 = time.perf_counter()
+
     retriever = idx.as_retriever(similarity_top_k=top_k)
     nodes = retriever.retrieve(query)
+    t2 = time.perf_counter()
+
+    print(f"[PERF] get_index={(t1-t0)*1000:.1f}ms | retrieve={(t2-t1)*1000:.1f}ms | total={(t2-t0)*1000:.1f}ms")
 
     results: List[Dict[str, Any]] = []
     for item in nodes:
         node = item.node
-        score = getattr(item, "score", None)  # now similarity (higher is better)
+        score = getattr(item, "score", None)  # for L2, lower is better
 
         text = node.get_content() if hasattr(node, "get_content") else str(node)
         metadata = getattr(node, "metadata", {}) or {}
@@ -94,13 +112,13 @@ def retrieve(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
             "metadata": metadata
         })
 
-    # Sort explicitly: highest similarity first
-    results.sort(key=lambda r: float("-inf") if r["similarity"] is None else r["similarity"], reverse=True)
+    # For L2: lower is better
+    results.sort(key=lambda r: float("inf") if r["similarity"] is None else r["similarity"])
+    _RETRIEVE_CACHE[key] = results
     return results
 
 
-
-def ask(query: str,history_text: str, top_k: int = 3) -> Dict[str, Any]:
+def ask(query: str, history_text: str = "", top_k: int = 3) -> Dict[str, Any]:
     sources = retrieve(query, top_k=top_k)
 
     context = "\n\n".join(

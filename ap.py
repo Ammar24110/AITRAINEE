@@ -4,7 +4,9 @@ import rag
 from fastapi import FastAPI, HTTPException, Depends
 from sqlalchemy.orm import Session
 from db import init_db, get_db, ChatSessionModel, Message, RetrievedContext
-SUMMARY_TRIGGER = 5   # start summarizing after this many messages in session
+from fastapi.responses import HTMLResponse
+from pathlib import Path
+SUMMARY_TRIGGER = 8   # start summarizing after this many messages in session
 SUMMARY_CHUNK = 10     # summarize this many old messages at a time
 RECENT_KEEP = 6        # keep last 6 messages as "recent"
 app = FastAPI(title="Milestone 3 - Data Preparation and Indexing")
@@ -276,3 +278,24 @@ def get_history(session_id: int, db: Session = Depends(get_db)):
         ]
     }
 
+
+@app.get("/sessions")
+def list_sessions(db: Session = Depends(get_db)):
+    sessions = (
+        db.query(ChatSessionModel)
+        .order_by(ChatSessionModel.created_at.desc())
+        .all()
+    )
+    return [
+        {
+            "id": s.id,
+            "title": s.title,
+            "created_at": s.created_at,
+            "summary": s.summary or ""
+        }
+        for s in sessions
+    ]
+@app.get("/ui", response_class=HTMLResponse)
+def ui_page():
+    html_path = Path("ui/index.html")
+    return html_path.read_text(encoding="utf-8")
