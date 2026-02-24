@@ -36,6 +36,17 @@ def get_embed_dim() -> int:
     _EMBED_DIM = len(vec)
     return _EMBED_DIM
 
+def is_personal_query(q: str) -> bool:
+    q = (q or "").lower()
+    triggers = [
+        "my ", "i ", "i'm", "im ",
+        "me ", "mine",
+        "my name", "what is my name",
+        "where do i live", "where am i from",
+        "what do i like", "what do i love",
+        "remember", "do you remember"
+    ]
+    return any(t in q for t in triggers)
 def build_index() -> VectorStoreIndex:
     setup_models()
     documents = SimpleDirectoryReader(DATA_DIR).load_data()
@@ -204,14 +215,29 @@ You have TWO sources:
 2) DOCUMENT CONTEXT (retrieved chunks from files).
 
 RULES:
-- Prefer CHAT HISTORY for personal facts/preferences.
-- If the answer is in CHAT HISTORY, REWRITE it as a clean answer.
-  - Do NOT quote the user's sentence verbatim.
-  - Convert "I ..." to "You ..." when appropriate.
-- Else if the answer is in DOCUMENT CONTEXT, answer using DOCUMENT CONTEXT.
-- Else say exactly: I don't know based on the provided history and documents.
-- Keep the answer to 1-2 sentences.
 
+1) Determine the question type first.
+
+2) If the question is about personal information 
+   (name, age, location, preferences, relationships, past statements),
+   answer ONLY using CHAT HISTORY.
+   - Do NOT use DOCUMENT CONTEXT.
+   - Rewrite the answer cleanly.
+   - Convert "I ..." to "You ..." when appropriate.
+
+3) If the question is technical, factual, or about external knowledge,
+   IGNORE CHAT HISTORY completely.
+   Answer ONLY using DOCUMENT CONTEXT.
+
+4) Never mix CHAT HISTORY and DOCUMENT CONTEXT in the same answer.
+
+5) If the answer is not found in the correct source,
+   say exactly:
+   I don't know based on the provided history and documents.
+
+6) Keep the answer to 1-2 sentences.
+7) NEVER mention chat history unless the question is explicitly about the user (name/location/preferences).
+8)NEVER start an answer with a personal fact unless the question is personal.
 EXAMPLES:
 
 Example 1:
@@ -251,6 +277,8 @@ QUESTION:
 
 ANSWER:
 """
+    if not is_personal_query(query):
+      history_text = ""
     setup_models()
     response = Settings.llm.complete(prompt)
 
