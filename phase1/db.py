@@ -16,13 +16,15 @@ Base = declarative_base()
 
 
 class ChatSessionModel(Base):
-    __tablename__ = "sessions"
+    __tablename__ = "chat_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, default="New Chat")
+    title = Column(String, default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    #  NEW (for summarization)
     summary = Column(Text, default="")
     summary_last_message_id = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
 
     messages = relationship("Message", back_populates="session", cascade="all, delete")
 
