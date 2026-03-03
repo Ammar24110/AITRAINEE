@@ -29,4 +29,4 @@ class Task:
     
     def to_dict(self):
        """Converts the Task object into a dictionary representation."""
-       return("task_id": self.task_id, "person_assigned": self.person_assigned,"title": self.title,"description": self.description,"status": self.status,"due_date": self.due_date,"created_at": self.created_at.isoformat(),"updated_at": self.updated_at.isoformat())
+       return({"task_id": self.task_id, "person_assigned": self.person_assigned,"title": self.title,"description": self.description,"status": self.status,"due_date": self.due_date,"created_at": self.created_at.isoformat(),"updated_at": self.updated_at.isoformat()})
