@@ -1,6 +1,7 @@
 from Phase2.Agents.models.intent import Intent
 from Phase2.Agents.models.agent_response import AgentResponse
 from Phase2.Agents.models.task import Task
+from typing import Optional
 from Phase2.Agents.models.services.task_repository import TaskRepository
 
 class DbAgent:
@@ -24,11 +25,97 @@ class DbAgent:
         else:
            return AgentResponse("error")
         
-    def _create_task(self, intent)-> AgentResponse:
-       title = intent.params.get("title")
-       if not title:
-          return AgentResponse("Title is required")
-       task= Task(task_id)
-       self.repo.add_task(task)
-       return AgentResponse(success=True, data=task)
+    def _create_task(self, intent: Intent) -> AgentResponse:
+        """Creates a new task."""
+
+        title = intent.params.get("title")
+        person_assigned = intent.params.get("person_assigned")
+        description = intent.params.get("description")
+        due_date = intent.params.get("due_date")
+
+        if not title:
+            return AgentResponse(success=False, message="Title is required")
+
+        if not person_assigned:
+            return AgentResponse(success=False, message="Person assigned is required")
+
+        task = Task(
+            task_id=self._next_id,
+            person_assigned=person_assigned,
+            title=title,
+            description=description,
+            due_date=due_date,
+        )
+
+        self.repo.add_task(task)
+        self._next_id += 1
+
+        return AgentResponse(
+            success=True,
+            message="Task created successfully",
+            data={"task_id": task.task_id},
+        )
+    def _update_task(self, intent: Intent) -> AgentResponse:
+        """Updates an existing task."""
+
+        task_id = intent.params.get("task_id")
+        if not task_id:
+            return AgentResponse(success=False, message="Task ID is required")
+
+        task = self.repo.get_task(task_id)
+        if not task:
+            return AgentResponse(success=False, message="Task not found")
+
+        # Update fields if provided
+        if "title" in intent.params:
+            task.title = intent.params["title"]
+
+        if "description" in intent.params:
+            task.description = intent.params["description"]
+
+        if "due_date" in intent.params:
+            task.update_date(intent.params["due_date"])
+
+        if "status" in intent.params:
+            task.status = intent.params["status"]
+
+        self.repo.update_task(task)
+
+        return AgentResponse(
+            success=True,
+            message="Task updated successfully",
+            data={"task_id": task.task_id},
+        )
+    def _delete_task(self, intent: Intent) -> AgentResponse:
+        """Deletes a task."""
+
+        task_id = intent.params.get("task_id")
+        if not task_id:
+            return AgentResponse(success=False, message="Task ID is required")
+
+        task = self.repo.get_task(task_id)
+        if not task:
+            return AgentResponse(success=False, message="Task not found")
+
+        self.repo.delete_task(task_id)
+
+        return AgentResponse(
+            success=True,
+            message="Task deleted successfully",
+            data={"task_id": task_id},
+        )
+    def _list_tasks(self, intent: Intent) -> AgentResponse:
+        """Returns all tasks (optionally filtered by person)."""
+
+        person_assigned: Optional[str] = intent.params.get("person_assigned")
+        tasks = self.repo.get_all_tasks()
+
+        if person_assigned:
+            tasks = [t for t in tasks if t.person_assigned == person_assigned]
+
+        return AgentResponse(
+            success=True,
+            message="Tasks retrieved successfully",
+            data=[task.to_dict() for task in tasks],
+        )
        
