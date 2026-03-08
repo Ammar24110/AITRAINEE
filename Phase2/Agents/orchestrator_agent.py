@@ -27,16 +27,16 @@ class OrchestratorAgent:
         """Processes a user request and delegates it to the correct agent."""
         intent = Intent.from_text(user_input)
 
-        if intent in [Intent.CREATE_TASK, Intent.UPDATE_TASK, Intent.DELETE_TASK]:
-          db_response= self.db_agent.handle_request(user_input)
+        if intent.name in ["CREATE_TASK", "UPDATE_TASK", "DELETE_TASK"]:
+          db_response = self.db_agent.handle_request(intent)
           if db_response.success:
-              self.mcp_agent.handle_request(user_input)
+              self.mcp_agent.handle_request(intent)
           return db_response
         
-        elif intent == Intent.KNOWLEDGE_QUERY:
-            return self.informative_agent.handle_request(user_input)
-        elif intent == Intent.NOTIFY:
-            return self.mcp_agent.handle_request(user_input)
+        elif intent.name == "KNOWLEDGE_QUERY":
+            return self.informative_agent.handle_request(intent)
+        elif intent.name == "NOTIFY":
+            return self.mcp_agent.handle_request(intent)
         else:
            return AgentResponse( success=False, message="sorry request not understood", agent_name= "orchestrator")
                
