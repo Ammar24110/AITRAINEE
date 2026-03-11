@@ -1,6 +1,6 @@
-from Agents.models.agent_response import AgentResponse
-from Agents.models.intent import Intent
-from Agents.models.services.notification_service import NotificationService
+from Phase2.Agents.models.agent_response import AgentResponse
+from Phase2.Agents.models.intent import Intent
+from Phase2.Agents.models.services.notification_service import NotificationService
 
 class MCPAgent:
 
@@ -16,6 +16,6 @@ class MCPAgent:
         if intent.name in ["CREATE_TASK", "UPDATE_TASK"]:
             self.notification_service.send_notification("intent is related to tasks")
         else:
-            return AgentResponse (success= False, message=" no notification needed")
+            return AgentResponse (success= False, message=" no notification needed",agent_name="mcp_agent")
 
-        return AgentResponse(success=True, message="Notification sent")
+        return AgentResponse(success=True, message="Notification sent",agent_name="mcp_agent")

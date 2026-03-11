@@ -10,7 +10,7 @@ class DbAgent:
     def __init__(self):
         self.repo = TaskRepository()
         self.agent_name = "db_agent"
-
+        self._next_id = 1
 
     def handle_request(self,intent: Intent) -> AgentResponse:
         if intent.name == "CREATE_TASK":
@@ -21,9 +21,14 @@ class DbAgent:
 
         elif intent.name == "DELETE_TASK":
            return self._delete_task(intent)
-
+        elif intent.name == "LIST_TASKS":
+           return self._list_tasks(intent)
         else:
-           return AgentResponse("error")
+           return AgentResponse(
+    success=False,
+    message="Unsupported DB operation",
+    agent_name="db_agent"
+)
         
     def _create_task(self, intent: Intent) -> AgentResponse:
         """Creates a new task."""
@@ -34,10 +39,10 @@ class DbAgent:
         due_date = intent.params.get("due_date")
 
         if not title:
-            return AgentResponse(success=False, message="Title is required")
+            return AgentResponse(success=False, message="Title is required", agent_name="db_agent")
 
         if not person_assigned:
-            return AgentResponse(success=False, message="Person assigned is required")
+            return AgentResponse(success=False, message="Person assigned is required", agent_name="db_agent")
 
         task = Task(
             task_id=self._next_id,
@@ -53,18 +58,19 @@ class DbAgent:
         return AgentResponse(
             success=True,
             message="Task created successfully",
+            agent_name="db_agent",
             data={"task_id": task.task_id},
-        )
+            )
     def _update_task(self, intent: Intent) -> AgentResponse:
         """Updates an existing task."""
 
         task_id = intent.params.get("task_id")
         if not task_id:
-            return AgentResponse(success=False, message="Task ID is required")
+            return AgentResponse(success=False, message="Task ID is required", agent_name="db_agent")
 
         task = self.repo.get_task(task_id)
         if not task:
-            return AgentResponse(success=False, message="Task not found")
+            return AgentResponse(success=False, message="Task not found", agent_name="db_agent")
 
         # Update fields if provided
         if "title" in intent.params:
@@ -84,6 +90,7 @@ class DbAgent:
         return AgentResponse(
             success=True,
             message="Task updated successfully",
+            agent_name="db_agent", 
             data={"task_id": task.task_id},
         )
     def _delete_task(self, intent: Intent) -> AgentResponse:
@@ -91,17 +98,17 @@ class DbAgent:
 
         task_id = intent.params.get("task_id")
         if not task_id:
-            return AgentResponse(success=False, message="Task ID is required")
+            return AgentResponse(success=False, message="Task ID is required", agent_name="db_agent")
 
         task = self.repo.get_task(task_id)
         if not task:
-            return AgentResponse(success=False, message="Task not found")
+            return AgentResponse(success=False, message="Task not found", agent_name="db_agent")
 
         self.repo.delete_task(task_id)
 
         return AgentResponse(
             success=True,
-            message="Task deleted successfully",
+            message="Task deleted successfully", agent_name="db_agent",
             data={"task_id": task_id},
         )
     def _list_tasks(self, intent: Intent) -> AgentResponse:
@@ -115,7 +122,7 @@ class DbAgent:
 
         return AgentResponse(
             success=True,
-            message="Tasks retrieved successfully",
+            message="Tasks retrieved successfully", agent_name="db_agent",
             data=[task.to_dict() for task in tasks],
         )
        

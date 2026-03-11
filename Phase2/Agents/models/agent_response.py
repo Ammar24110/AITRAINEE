@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Optional, Dict, Any
 
 @dataclass
-class Agentresponse:
+class AgentResponse:
     """Represents a standardized response returned by system agents."""
 
     success: bool

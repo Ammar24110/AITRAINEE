@@ -1,7 +1,7 @@
 from typing import Dict, Any
 from phase1.rag import chat, get_index
 
-class RagAervice:
+class RagService:
 
     def __init__(self):
         self.index =get_index()
