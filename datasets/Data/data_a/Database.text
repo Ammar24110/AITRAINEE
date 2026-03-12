@@ -1,0 +1,39 @@
+A database is an organized collection of structured information stored electronically.
+
+Databases are used to store, manage, and retrieve data efficiently.
+
+There are different types of databases:
+
+1) Relational Databases:
+   - Store data in tables (rows and columns).
+   - Use SQL (Structured Query Language).
+   - Examples: MySQL, PostgreSQL, Oracle.
+
+2) NoSQL Databases:
+   - Designed for flexible or unstructured data.
+   - Types include:
+       - Document databases (MongoDB)
+       - Key-value stores (Redis)
+       - Column-based databases (Cassandra)
+       - Graph databases (Neo4j)
+
+SQL stands for Structured Query Language.
+It is used to:
+- SELECT data
+- INSERT data
+- UPDATE data
+- DELETE data
+
+ACID properties in relational databases:
+- Atomicity
+- Consistency
+- Isolation
+- Durability
+
+Databases are widely used in:
+- Banking systems
+- E-commerce websites
+- Social media platforms
+- Enterprise software
+
+A database management system (DBMS) is software that interacts with the database and users.

@@ -8,8 +8,8 @@ EMBED_MODEL = "nomic-embed-text"
 def main():
     Settings.llm = Ollama(model=LLM_MODEL, temperature=0)
     Settings.embed_model = OllamaEmbedding(model_name=EMBED_MODEL)
-
-    documents = SimpleDirectoryReader("Data").load_data()
+    
+    documents = SimpleDirectoryReader("datasets/Data", recursive=True).load_data()
     index = VectorStoreIndex.from_documents(documents)
 
     qa_template = PromptTemplate(

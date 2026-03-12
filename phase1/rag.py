@@ -17,7 +17,16 @@ _RETRIEVE_CACHE: dict[tuple[str, int], List[Dict[str, Any]]] = {}
 LLM_MODEL = "gemma3:4b"
 EMBED_MODEL = "nomic-embed-text"
 PERSIST_DIR = os.getenv("PERSIST_DIR", "storage")
-DATA_DIR = os.getenv("DATA_DIR", "datasets/Data/data_a")
+DATA_DIR = "datasets/Data"
+
+documents = SimpleDirectoryReader(
+    DATA_DIR,
+    recursive=True
+).load_data()
+
+print("\nLoaded documents:")
+for doc in documents:
+    print(doc.metadata.get("file_name"))
 PROMPT_MODE = "fewshot"  # options: "basic", "strict", "fewshot"
 
 _index: Optional[VectorStoreIndex] = None
@@ -94,7 +103,7 @@ def get_index(force_rebuild: bool = False) -> VectorStoreIndex:
     return _index
 
 
-def retrieve(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+def retrieve(query: str, top_k: int = 6) -> List[Dict[str, Any]]:
     key = (query.strip().lower(), top_k)
     if key in _RETRIEVE_CACHE:
        return _RETRIEVE_CACHE[key]
