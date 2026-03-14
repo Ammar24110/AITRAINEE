@@ -23,14 +23,13 @@ class TaskRepository:
 
         return list(self._tasks.values())
     
-    def update_task(self, task_id:str,title: Optional[str]=None)-> Optional[Task]:
-       task = self.get_task(task_id)
-       if task is None:
-         return None
-       if title is not None:
-           task.title = title
-           self._tasks[task_id] = task
-           return task
+    def update_task(self, task: Task) -> Optional[Task]:
+       """Updates an existing task."""
+       if task.task_id in self._tasks:
+          self._tasks[task.task_id] = task
+          return task
+       return None
+
        
     def delete_task(self, task_id: str) -> bool:
         if task_id in self._tasks :

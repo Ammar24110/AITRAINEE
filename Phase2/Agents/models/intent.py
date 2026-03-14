@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Dict, Any
-
+import re
 
 @dataclass
 class Intent:
@@ -38,10 +38,42 @@ class Intent:
 
         # UPDATE TASK
         if "update" in text_lower:
+
+            task_id = None
+            title = None
+
+            # extract task id
+            match = re.search(r'\d+', text)
+            if match:
+               task_id = int(match.group())
+
+            # extract new title
+            if ":" in text:
+                title = text.split(":")[1].strip()
+
             return Intent(
                 name="UPDATE_TASK",
-                params={"title": text}
+                params={
+                    "task_id": task_id,
+                    "title": title
+                }
             )
+        # DELETE TASK
+        if "delete" in text_lower:
+
+           task_id = None
+
+    # extract task id
+           for word in text_lower.split():
+              if word.isdigit():
+                 task_id = int(word)
+
+           return Intent(
+              name="DELETE_TASK",
+             params={
+            "task_id": task_id
+        }
+    )
 
         # LIST TASKS
         if "list" in text_lower:
