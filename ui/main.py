@@ -26,10 +26,17 @@ async def ask(request: Request):
 
     result = orchestrator.handle_request(user_query)
 
+    import json
+
+    if result.data:
+        response = result.message + "\n" + json.dumps(result.data, indent=2)
+    else:
+        response = result.message
+
     return templates.TemplateResponse(
         "index.html",
         {
             "request": request,
-            "response": result.data if result.data else result.message
+            "response": response
         }
     )
