@@ -1,0 +1,35 @@
+[33m2c19e2b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mphase2[m[33m)[m updated
+[33mb56fadf[m commit
+[33m4c9811b[m first commit
+[33mb859793[m[33m ([m[1;31morigin/phase2[m[33m)[m update
+[33m71889c4[m Added task update, delete intent support and improved task repository
+[33m64a8a2f[m Phase 2 completed
+[33m1ffefe5[m Completed Phase 2 multi-agent system with RAG integration
+[33m8e31644[m Phase 2 multi-agent system implementation
+[33m9b64f21[m update
+[33m7191408[m update
+[33mbff5d24[m Implemented TaskRepository and orchestrator_agent
+[33m7e3437b[m Phase 2: Implement Task and AgentResponse data models
+[33m6c02dcf[m Phase 2: Implement Task and AgentResponse data models
+[33m40a9270[m[33m ([m[1;31morigin/main[m[33m, [m[1;32mmain[m[33m)[m milestone 6
+[33m1a93c56[m Milestone 6: Bonus
+[33m39d3b2b[m Milestone 6
+[33mff6e5e7[m Create Demo_Script.md
+[33m83c6d5c[m Create milestone5Readme
+[33mbab3098[m milestone5 bonus
+[33m9c02e44[m Milestone 5 update
+[33m94e1f6b[m ER Diagram for chat history
+[33m5a18181[m Milestone 5: Chat history
+[33mf3e6798[m Create Milestone4.ReadMe
+[33m018f852[m Milestone 4 completed: Retrieval & LLM integration
+[33med43aca[m Rename README.md to Milestone2.README.md
+[33m93c562e[m Milestone3 documentation
+[33m680b5ab[m Milestone 3 completed: Data preperation & indexing
+[33m333c3e0[m Remove storage from repo tracking
+[33m2234465[m Milestone 3 - FAISS indexing
+[33md6e2dcc[m Update .gitignore
+[33mfa46e5f[m Create .gitignore
+[33m6182ab7[m Summary of RAG concepts
+[33m5323046[m milestone2 RAG indexing
+[33me2e78e1[m Milestone 2: Initial local LLM interaction scripts
+[33mdd0eebe[m Milestone 2 setup

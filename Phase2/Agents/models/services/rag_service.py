@@ -8,5 +8,4 @@ class RagService:
 
     def query(self, query: str, history_text: str = "") -> str:
         result = chat(query, history_text)
-
         return result["answer"]

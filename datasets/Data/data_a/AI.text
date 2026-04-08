@@ -1,0 +1,46 @@
+Artificial Intelligence (AI) stands for Artificial Intelligence.
+
+AI is a field of computer science that focuses on building systems that can perform tasks that normally require human intelligence.
+
+These tasks include:
+- Learning from data
+- Understanding language
+- Recognizing images
+- Making decisions
+- Solving problems
+
+There are different types of AI:
+
+1) Narrow AI (Weak AI):
+   Designed for specific tasks.
+   Examples: Chatbots, recommendation systems, voice assistants.
+
+2) General AI (Strong AI):
+   A theoretical type of AI that can perform any intellectual task a human can do.
+   It does not yet exist.
+
+3) Superintelligent AI:
+   A hypothetical AI that surpasses human intelligence.
+
+Common AI techniques include:
+
+- Machine Learning (ML): Systems learn patterns from data.
+- Deep Learning: A subset of ML using neural networks.
+- Natural Language Processing (NLP): Understanding and generating human language.
+- Computer Vision: Understanding images and videos.
+- Reinforcement Learning: Learning through trial and error.
+
+AI applications include:
+- Healthcare (disease prediction)
+- Finance (fraud detection)
+- Autonomous vehicles
+- Virtual assistants
+- Recommendation systems
+
+AI systems improve by:
+- Training on large datasets
+- Using better embeddings
+- Optimizing models
+- Improving retrieval systems (like RAG)
+
+AI is widely used in modern software systems and powers many intelligent applications today.

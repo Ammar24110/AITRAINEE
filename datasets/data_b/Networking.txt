@@ -1,0 +1,33 @@
+Computer Networking is the practice of connecting computers and devices to share resources and data.
+
+A network allows devices to communicate using protocols.
+
+Important networking concepts:
+
+IP Address:
+An IP address uniquely identifies a device on a network.
+Example: 192.168.1.1
+
+DNS (Domain Name System):
+Translates domain names into IP addresses.
+
+HTTP (Hypertext Transfer Protocol):
+Used for transferring web pages.
+
+HTTPS:
+Secure version of HTTP using encryption.
+
+TCP (Transmission Control Protocol):
+Reliable communication protocol that ensures data arrives correctly.
+
+UDP (User Datagram Protocol):
+Faster but less reliable protocol.
+
+Router:
+Connects different networks together.
+
+Switch:
+Connects devices within the same network.
+
+Firewall:
+Protects a network by filtering traffic.

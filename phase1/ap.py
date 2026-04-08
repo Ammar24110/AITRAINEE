@@ -1,9 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import rag
+import phase1.rag as rag
 from fastapi import FastAPI, HTTPException, Depends
 from sqlalchemy.orm import Session
-from db import init_db, get_db, ChatSessionModel, Message, RetrievedContext
+from phase1.db import init_db, get_db, ChatSessionModel, Message, RetrievedContext
 from fastapi.responses import HTMLResponse
 from pathlib import Path
 SUMMARY_TRIGGER = 8   # start summarizing after this many messages in session

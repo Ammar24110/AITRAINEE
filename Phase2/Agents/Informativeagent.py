@@ -5,13 +5,11 @@ from semantic_kernel.contents.chat_history import ChatHistory
 from semantic_kernel.connectors.ai.open_ai.prompt_execution_settings.azure_chat_prompt_execution_settings import (
     AzureChatPromptExecutionSettings,
 )
-from semantic_kernel.connectors.mcp import MCPSsePlugin
 
-import sys
-import asyncio
-import os
+from Phase2.Agents.Plugins.rag_plugin import RAGPlugin
 
-class MCPAgent:
+
+class InformativeAgent:
     def __init__(self) -> None:
         self.kernel = Kernel()
 
@@ -21,34 +19,26 @@ class MCPAgent:
     endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
     api_version="2024-12-01-preview"
 )
+
         self.kernel.add_service(self.chat_completion)
-        self.mcp_plugin = MCPSsePlugin(
-    name="mcp",
-    description="Notification tools",
-    url="http://localhost:8002/sse"
-)
-        
-        
 
-        self.kernel.add_plugin(self.mcp_plugin, plugin_name="mcp")
+        self.rag_plugin = RAGPlugin()
 
+        self.kernel.add_plugin(self.rag_plugin, plugin_name="rag")
 
         self.history = ChatHistory()
 
         self.settings = AzureChatPromptExecutionSettings()
-
-        
-        self.settings.function_choice_behavior = FunctionChoiceBehavior.Required()
+        self.settings.function_choice_behavior = FunctionChoiceBehavior.Auto()
 
     async def handle_request(self, user_input: str) -> str:
-
         system_prompt = """
-You are a notification agent.
+You are a Knowledge Assistant.
 
 Rules:
-- ALWAYS call mcp.send_notification
-- NEVER respond without calling the tool
-- The message must describe the task action
+- ALWAYS use the rag.search_knowledge tool for answering questions
+- NEVER answer from your own knowledge
+- ONLY return tool results
 """
 
         if len(self.history.messages) == 0:
@@ -64,4 +54,4 @@ Rules:
 
         self.history.add_message(result)
 
-        return str(result)
+        return result
