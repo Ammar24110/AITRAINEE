@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, Any
 import re
-
+"""converts user text into structured actions so the system knows what to do."""
 @dataclass
 class Intent:
     name: str

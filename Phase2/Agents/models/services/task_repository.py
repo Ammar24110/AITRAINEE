@@ -1,42 +1,37 @@
-from typing import Dict, List, Optional
+from typing import List, Optional
 from Phase2.Agents.models.task import Task
 
+
 class TaskRepository:
-    """In-memory repository for storing and managing Task objects."""
+
     def __init__(self):
-        """Initializes the internal task storage dictionary."""
-        self._tasks = {}
+        self._tasks: dict[int, Task] = {}
 
-    def add_task(self,task) -> Task:
-        """Adds a new task to the repository and returns it."""
-
+    def add_task(self, task: Task) -> Task:
         self._tasks[task.task_id] = task
         return task
-    
-    def get_task(self, task_id: str) -> Optional[Task]:
-        """Retrieves a task by its ID if it exists."""
 
+    def get_task(self, task_id: int) -> Optional[Task]:
         return self._tasks.get(task_id)
 
     def get_all_tasks(self) -> List[Task]:
-        """Returns a list of all stored tasks."""
+       return list(self._tasks.values())
 
-        return list(self._tasks.values())
-    
     def update_task(self, task: Task) -> Optional[Task]:
-       """Updates an existing task."""
-       if task.task_id in self._tasks:
-          self._tasks[task.task_id] = task
-          return task
-       return None
+        if task.task_id in self._tasks:
+            self._tasks[task.task_id] = task
+            return task
+        return None
 
-       
-    def delete_task(self, task_id: str) -> bool:
-        if task_id in self._tasks :
+    def delete_task(self, task_id: int) -> bool:
+        if task_id in self._tasks:
             del self._tasks[task_id]
             return True
-        else:
-            return False
+        return False
 
-
-       
+    def get_tasks_by_person(self, person: str) -> List[Task]:
+        return [
+            task for task in self._tasks.values()
+            if task.person_assigned
+            and task.person_assigned.lower() == person.lower()
+        ]

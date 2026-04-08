@@ -1,0 +1,12 @@
+{
+  "servers": {
+    "notification": {
+      "command": "C:/Users/ammar/AppData/Local/Microsoft/WindowsApps/python3.11.exe",
+      "args": ["-m", "Phase2.Agents.mcp_server"],
+      "cwd": "C:/Users/ammar/Downloads/internship",
+      "env": {
+        "PYTHONPATH": "C:/Users/ammar/Downloads/internship"
+      }
+    }
+  }
+}

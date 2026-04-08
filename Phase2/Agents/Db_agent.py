@@ -1,128 +1,75 @@
-from Phase2.Agents.models.intent import Intent
-from Phase2.Agents.models.agent_response import AgentResponse
-from Phase2.Agents.models.task import Task
-from typing import Optional
+from semantic_kernel import Kernel
+from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
+from semantic_kernel.connectors.ai.function_choice_behavior import FunctionChoiceBehavior
+from semantic_kernel.contents.chat_history import ChatHistory
+from semantic_kernel.connectors.ai.open_ai.prompt_execution_settings.azure_chat_prompt_execution_settings import (
+    AzureChatPromptExecutionSettings,
+)
+from semantic_kernel.connectors.mcp import MCPSsePlugin
+
+
+from Phase2.Agents.Plugins.task_plugin import TaskPlugin
 from Phase2.Agents.models.services.task_repository import TaskRepository
+import sys
+import asyncio
+import os
 
 class DbAgent:
-    """Handles create, update, and delete operations for tasks."""
+    def __init__(self) -> None:
+        self.kernel = Kernel()
 
-    def __init__(self):
-        self.repo = TaskRepository()
-        self.agent_name = "db_agent"
-        self._next_id = 1
-
-    def handle_request(self,intent: Intent) -> AgentResponse:
-        if intent.name == "CREATE_TASK":
-           return self._create_task(intent)
-
-        elif intent.name == "UPDATE_TASK":
-           return self._update_task(intent)
-
-        elif intent.name == "DELETE_TASK":
-           return self._delete_task(intent)
-        elif intent.name == "LIST_TASKS":
-           return self._list_tasks(intent)
-        else:
-           return AgentResponse(
-    success=False,
-    message="Unsupported DB operation",
-    agent_name="db_agent"
+        self.chat_completion = AzureChatCompletion(
+    deployment_name="gpt-5.4-mini",
+    api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+    endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+    api_version="2024-12-01-preview"
 )
-        
-    def _create_task(self, intent: Intent) -> AgentResponse:
-        """Creates a new task."""
+        self.kernel.add_service(self.chat_completion)
 
-        title = intent.params.get("title")
-        person_assigned = intent.params.get("person_assigned")
-        description = intent.params.get("description")
-        due_date = intent.params.get("due_date")
+        # TASK PLUGIN
+        self.repo = TaskRepository()
+        self.task_plugin = TaskPlugin(self.repo)
+        self.kernel.add_plugin(self.task_plugin, plugin_name="tasks")
 
-        if not title:
-            return AgentResponse(success=False, message="Title is required", agent_name="db_agent")
+    
+        self.mcp_plugin = MCPSsePlugin(
+    name="mcp",
+    description="Notification tools",
+    url="http://localhost:8002/sse"
+)
 
-        if not person_assigned:
-            return AgentResponse(success=False, message="Person assigned is required", agent_name="db_agent")
+        self.kernel.add_plugin(self.mcp_plugin, plugin_name="mcp")
 
-        task = Task(
-            task_id=self._next_id,
-            person_assigned=person_assigned,
-            title=title,
-            description=description,
-            due_date=due_date,
+        asyncio.create_task(self.mcp_plugin.connect())
+
+        self.history = ChatHistory()
+
+        self.settings = AzureChatPromptExecutionSettings()
+        self.settings.function_choice_behavior = FunctionChoiceBehavior.Auto()
+
+    async def handle_request(self, user_input: str) -> str:
+
+        system_prompt = """
+You handle all task operations.
+
+Rules:
+- ALWAYS use task tools for task operations
+- AFTER creating or updating a task, you MUST call mcp.send_notification
+- NEVER skip the notification step
+- Return a natural language response to the user
+"""
+
+        if len(self.history.messages) == 0:
+            self.history.add_system_message(system_prompt)
+
+        self.history.add_user_message(user_input)
+
+        result = await self.chat_completion.get_chat_message_content(
+            chat_history=self.history,
+            settings=self.settings,
+            kernel=self.kernel,
         )
 
-        self.repo.add_task(task)
-        self._next_id += 1
+        self.history.add_message(result)
 
-        return AgentResponse(
-            success=True,
-            message="Task created successfully",
-            agent_name="db_agent",
-            data={"task_id": task.task_id},
-            )
-    def _update_task(self, intent: Intent) -> AgentResponse:
-        """Updates an existing task."""
-
-        task_id = intent.params.get("task_id")
-        if not task_id:
-            return AgentResponse(success=False, message="Task ID is required", agent_name="db_agent")
-
-        task = self.repo.get_task(task_id)
-        if not task:
-            return AgentResponse(success=False, message="Task not found", agent_name="db_agent")
-
-        # Update fields if provided
-        if "title" in intent.params:
-            task.title = intent.params["title"]
-
-        if "description" in intent.params:
-            task.description = intent.params["description"]
-
-        if "due_date" in intent.params:
-            task.update_date(intent.params["due_date"])
-
-        if "status" in intent.params:
-            task.status = intent.params["status"]
-
-        self.repo.update_task(task)
-
-        return AgentResponse(
-            success=True,
-            message="Task updated successfully",
-            agent_name="db_agent", 
-            data={"task_id": task.task_id},
-        )
-    def _delete_task(self, intent: Intent) -> AgentResponse:
-        """Deletes a task."""
-
-        task_id = intent.params.get("task_id")
-        if not task_id:
-            return AgentResponse(success=False, message="Task ID is required", agent_name="db_agent")
-
-        task = self.repo.get_task(task_id)
-        if not task:
-            return AgentResponse(success=False, message="Task not found", agent_name="db_agent")
-
-        self.repo.delete_task(task_id)
-
-        return AgentResponse(
-            success=True,
-            message="Task deleted successfully", agent_name="db_agent",
-            data={"task_id": task_id},
-        )
-    def _list_tasks(self, intent: Intent) -> AgentResponse:
-        """Returns all tasks (optionally filtered by person)."""
-
-        person_assigned: Optional[str] = intent.params.get("person_assigned")
-        tasks = self.repo.get_all_tasks()
-
-        if person_assigned:
-            tasks = [t for t in tasks if t.person_assigned == person_assigned]
-
-        return AgentResponse(
-            success=True,
-            message="Tasks retrieved successfully", agent_name="db_agent",
-            data=[task.to_dict() for task in tasks],
-        )
-       
+        return str(result)

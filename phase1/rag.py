@@ -138,8 +138,10 @@ def retrieve(query: str, top_k: int = 6) -> List[Dict[str, Any]]:
     return results
 
 
-def ask(query: str, history_text: str = "", top_k: int = 3) -> Dict[str, Any]:
-    sources = retrieve(query, top_k=top_k)
+def ask(query: str, history_text: str = "", top_k: int = 5) -> Dict[str, Any]:
+    query = query.lower().strip()
+    better_query = f"Explain clearly: {query}"
+    sources = retrieve(better_query, top_k=top_k)
 
     context = "\n\n".join(
         [f"[Source {i+1} | {s['metadata'].get('file_name','unknown')}]\n{s['text']}"
@@ -156,7 +158,8 @@ You have TWO sources:
 RULES:
 - If the answer is in CHAT HISTORY, answer using CHAT HISTORY.
 - Else if the answer is in DOCUMENT CONTEXT, answer using DOCUMENT CONTEXT.
-- Else say exactly: I don't know based on the provided history and documents.
+- If the answer is not clearly found, try your best using the DOCUMENT CONTEXT.
+- Only say "I don't know based on the provided history and documents" if absolutely nothing is relevant.
 - Keep the answer to 1-2 sentences.
 
 EXAMPLES:
