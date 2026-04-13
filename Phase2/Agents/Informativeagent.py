@@ -5,6 +5,7 @@ from semantic_kernel.contents.chat_history import ChatHistory
 from semantic_kernel.connectors.ai.open_ai.prompt_execution_settings.azure_chat_prompt_execution_settings import (
     AzureChatPromptExecutionSettings,
 )
+import os
 
 from Phase2.Agents.Plugins.rag_plugin import RAGPlugin
 

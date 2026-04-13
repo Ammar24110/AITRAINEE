@@ -1,16 +1,16 @@
 from datetime import datetime
 import smtplib
 from email.mime.text import MIMEText
-import os 
+
 
 class NotificationService:
 
     def send_notification(self, message: str):
         current = datetime.now()
 
-        sender = os.getenv("EMAIL_SENDER")
-        receiver = os.getenv("EMAIL_RECEIVER")
-        password = os.getenv("EMAIL_PASSWORD")
+        sender = "ammareyada123@gmail.com"
+        receiver = "ammareyada2@gmail.com"
+        password = "fuyazwcppbredczc"
 
         subject = "Task Notification"
 
