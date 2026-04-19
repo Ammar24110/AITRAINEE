@@ -1,5 +1,5 @@
 import os
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Any, Dict, List
 
 import requests
 from dotenv import load_dotenv
@@ -7,6 +7,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from openai import AzureOpenAI
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from langdetect import detect
 
 from Phase3.db import ChatSessionModel, Message, get_db, init_db
 
@@ -25,6 +26,9 @@ search_index = os.getenv("AZURE_SEARCH_INDEX")
 search_key = os.getenv("AZURE_SEARCH_ADMIN_KEY")
 openai_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT")
 
+azure_custom_skill_url = os.getenv("AZURE_CUSTOM_SKILL_URL")
+azure_custom_skill_key = os.getenv("AZURE_CUSTOM_SKILL_KEY")
+
 SEARCH_API_VERSION = "2024-07-01"
 TOP_K = 4
 REQUEST_TIMEOUT = 30
@@ -34,6 +38,19 @@ HISTORY_LIMIT = 10
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[int] = None
+
+
+class SkillRecord(BaseModel):
+    recordId: str
+    data: Dict[str, Any]
+
+
+class SkillRequest(BaseModel):
+    values: List[SkillRecord]
+
+
+class AzureSkillTestRequest(BaseModel):
+    texts: List[str]
 
 
 @app.on_event("startup")
@@ -143,6 +160,7 @@ def rewrite_search_query(history_text: str, current_message: str) -> str:
     rewritten = response.choices[0].message.content.strip()
     return rewritten if rewritten else current_message
 
+
 def search_documents(search_query: str):
     if not search_service or not search_index or not search_key:
         raise HTTPException(
@@ -177,9 +195,9 @@ def search_documents(search_query: str):
                 "kind": "vector",
                 "vector": query_vector,
                 "fields": "text_vector",
-                "k": 50
+                "k": 50,
             }
-        ]
+        ],
     }
 
     try:
@@ -203,6 +221,7 @@ def search_documents(search_query: str):
         ) from exc
 
     return search_response.json().get("value", [])
+
 
 def build_context_and_sources(results) -> Tuple[str, list]:
     context_parts = []
@@ -321,6 +340,84 @@ def handle_smart_chat(request: ChatRequest, db: Session):
         "reply": reply,
         "sources": sources,
     }
+
+
+@app.post("/custom-skill/detect-language")
+def detect_language_skill(request: SkillRequest):
+    response_values = []
+
+    language_map = {
+        "ar": "Arabic",
+        "en": "English",
+        "fr": "French",
+        "pt": "Portuguese",
+        "es": "Spanish",
+        "de": "German",
+        "it": "Italian",
+        "tr": "Turkish",
+    }
+
+    for record in request.values:
+        text = record.data.get("text", "").strip()
+
+        try:
+            detected_code = detect(text) if text else "unknown"
+            language = language_map.get(detected_code, detected_code)
+        except Exception:
+            language = "Unknown"
+
+        response_values.append(
+            {
+                "recordId": record.recordId,
+                "data": {
+                    "detected_language": language
+                },
+                "errors": None,
+                "warnings": None,
+            }
+        )
+
+    return {"values": response_values}
+
+
+def call_deployed_custom_skill(texts: List[str]) -> Dict[str, Any]:
+    if not azure_custom_skill_url or not azure_custom_skill_key:
+        raise HTTPException(
+            status_code=500,
+            detail="Azure custom skill URL or key is missing from environment variables.",
+        )
+
+    payload = {
+        "values": [
+            {
+                "recordId": str(i + 1),
+                "data": {"text": text},
+            }
+            for i, text in enumerate(texts)
+        ]
+    }
+
+    url = f"{azure_custom_skill_url}?code={azure_custom_skill_key}"
+
+    try:
+        response = requests.post(
+            url,
+            json=payload,
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Azure deployed custom skill request failed: {str(exc)}",
+        ) from exc
+
+    return response.json()
+
+
+@app.post("/test-azure-custom-skill")
+def test_azure_custom_skill(request: AzureSkillTestRequest):
+    return call_deployed_custom_skill(request.texts)
 
 
 @app.post("/chat")
