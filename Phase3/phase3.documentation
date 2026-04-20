@@ -1,0 +1,35 @@
+1)How the architecture works (orchestration flow)?
+ -Documents are stored in Azure Blob Storage.
+ -Azure AI Search uses a datasource and indexer to read and process the documents.
+  -A skillset splits documents into chunks, generates embeddings using Azure OpenAI, and applies the custom language-detection skill.
+ -The enriched chunks are stored in the phase3-rag index.
+ -In runtime, the FastAPI backend receives the user message.
+ -The system loads chat history from the database.
+ -It decides whether the request should be handled as CHAT or RAG.
+ -If RAG is needed, the query is rewritten if necessary, sent to Azure AI Search, and the top chunks are retrieved.
+ -The retrieved context is sent to Azure OpenAI, which generates the final answer.
+ -The response is returned to the user and saved in chat history.
+
+2)How hybrid and semantic search are configured?
+   -The system uses hybrid search by combining:
+      -keyword search
+      -vector search
+   -For each user query, an embedding is generated using text-embedding-3-small.
+   -Azure AI Search searches both:
+      -the text query
+      -the vector field text_vector
+  -Semantic search is enabled using:
+     -queryType = "semantic"
+     -a semantic configuration for the index
+  -This improves ranking quality and helps return more relevant chunks for natural-language questions.
+
+3)How the custom skill enriches documents?
+   -A custom Web API skill was implemented for language detection.
+   -It receives each text chunk during indexing.
+   -It detects the language and returns it in the Azure custom skill response format.
+   -The skill was first tested locally, then deployed to Azure Functions.
+   -It was added to the skillset and mapped to the index field detected_language.
+   -After rerunning the indexer, the field appeared in the index with values such as:
+      -English
+      -Spanish
+   -This enriches the documents with extra metadata that can support filtering and better analysis.
