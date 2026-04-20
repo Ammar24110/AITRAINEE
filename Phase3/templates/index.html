@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Phase 3 RAG Chatbot UI</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 950px;
+            margin: 40px auto;
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+        }
+
+        h1, h2, h3 {
+            color: #1f2937;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 20px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .panel {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 18px;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin: 12px 0 6px;
+        }
+
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        button {
+            margin-top: 16px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        .card {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 10px;
+            background: white;
+            border: 1px solid #e5e7eb;
+        }
+
+        .reply-box {
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        .session {
+            color: #374151;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Phase 3 RAG Chatbot UI</h1>
+        <div class="subtitle">Chat with the bot and test the Azure deployed language detection custom skill.</div>
+
+        <div class="grid">
+            <div class="panel">
+                <h2>Chatbot</h2>
+                <form method="post" action="/ui">
+                    <label for="session_id">Session ID</label>
+                    <input
+                        type="text"
+                        id="session_id"
+                        name="session_id"
+                        value="{{ session_id }}"
+                        placeholder="Leave empty to start a new session"
+                    />
+
+                    <label for="message">Your Message</label>
+                    <textarea
+                        id="message"
+                        name="message"
+                        placeholder="Ask your question here..."
+                        required
+                    >{{ message }}</textarea>
+
+                    <button type="submit">Send</button>
+                </form>
+
+                {% if session_id %}
+                <div class="session">
+                    <strong>Current Session ID:</strong> {{ session_id }}
+                </div>
+                {% endif %}
+
+                {% if reply %}
+                <div class="card">
+                    <h3>Bot Reply</h3>
+                    <div class="reply-box">{{ reply }}</div>
+                </div>
+                {% endif %}
+
+                {% if sources and sources|length > 0 %}
+                <div class="card">
+                    <h3>Sources</h3>
+                    <ul>
+                        {% for source in sources %}
+                        <li>{{ source }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="panel">
+                <h2>Language Detection Test</h2>
+                <form method="post" action="/ui/detect-language">
+                    <label for="detect_texts">Texts to Detect</label>
+                    <textarea
+                        id="detect_texts"
+                        name="detect_texts"
+                        placeholder="Write one text per line..."
+                        required
+                    >{{ detect_texts }}</textarea>
+
+                    <button type="submit">Detect Language</button>
+                </form>
+
+                {% if detected_languages and detected_languages|length > 0 %}
+                <div class="card">
+                    <h3>Detected Languages</h3>
+                    <ul>
+                        {% for item in detected_languages %}
+                        <li><strong>Text {{ item.recordId }}:</strong> {{ item.language }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

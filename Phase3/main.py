@@ -3,7 +3,9 @@ from typing import Optional, Tuple, Any, Dict, List
 
 import requests
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request, Form
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from openai import AzureOpenAI
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -14,6 +16,8 @@ from Phase3.db import ChatSessionModel, Message, get_db, init_db
 load_dotenv("Phase3/.env")
 
 app = FastAPI()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 client = AzureOpenAI(
     api_key=os.getenv("AZURE_OPENAI_API_KEY"),
@@ -418,6 +422,83 @@ def call_deployed_custom_skill(texts: List[str]) -> Dict[str, Any]:
 @app.post("/test-azure-custom-skill")
 def test_azure_custom_skill(request: AzureSkillTestRequest):
     return call_deployed_custom_skill(request.texts)
+
+
+@app.get("/ui", response_class=HTMLResponse)
+def ui_home(request: Request):
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "reply": "",
+            "sources": [],
+            "session_id": "",
+            "message": "",
+            "detected_languages": [],
+            "detect_texts": "",
+        },
+    )
+
+
+@app.post("/ui", response_class=HTMLResponse)
+def ui_chat(
+    request: Request,
+    message: str = Form(...),
+    session_id: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    parsed_session_id = int(session_id) if session_id.strip() else None
+
+    chat_request = ChatRequest(
+        message=message,
+        session_id=parsed_session_id,
+    )
+
+    result = handle_smart_chat(chat_request, db)
+
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "reply": result["reply"],
+            "sources": result["sources"],
+            "session_id": result["session_id"],
+            "message": message,
+            "detected_languages": [],
+            "detect_texts": "",
+        },
+    )
+
+
+@app.post("/ui/detect-language", response_class=HTMLResponse)
+def ui_detect_language(
+    request: Request,
+    detect_texts: str = Form(...),
+):
+    texts = [line.strip() for line in detect_texts.splitlines() if line.strip()]
+    result = call_deployed_custom_skill(texts)
+
+    detected_languages = []
+    for item in result.get("values", []):
+        detected_languages.append(
+            {
+                "recordId": item.get("recordId"),
+                "language": item.get("data", {}).get("detected_language", "Unknown"),
+            }
+        )
+
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "reply": "",
+            "sources": [],
+            "session_id": "",
+            "message": "",
+            "detected_languages": detected_languages,
+            "detect_texts": detect_texts,
+        },
+    )
 
 
 @app.post("/chat")
