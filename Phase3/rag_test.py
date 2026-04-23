@@ -29,7 +29,7 @@ search_payload = {
     "search": question,
     "top": 2
 }
-
+#u
 search_response = requests.post(search_url, headers=search_headers, json=search_payload)
 results = search_response.json()["value"]
 
