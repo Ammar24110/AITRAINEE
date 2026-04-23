@@ -14,7 +14,7 @@ from langdetect import detect
 from Phase3.db import ChatSessionModel, Message, get_db, init_db
 
 load_dotenv("Phase3/.env")
-
+#u
 app = FastAPI()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))

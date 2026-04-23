@@ -17,7 +17,7 @@ Base = declarative_base()
 class ChatSessionModel(Base):
     __tablename__ = "chat_sessions"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)#u
     title = Column(String, default="New Chat")
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -34,7 +34,7 @@ class Message(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     session_id = Column(Integer, ForeignKey("chat_sessions.id"), index=True, nullable=False)
-    role = Column(String, nullable=False)  # user or assistant
+    role = Column(String, nullable=False)  
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
